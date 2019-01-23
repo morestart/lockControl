@@ -10,9 +10,9 @@ class SerialLockControl:
             self.ser = serial.Serial(serial_name, port)
         except Exception as e:
             print(e)
-        # 0x00 只充当第0个数 实际用不到
+        # 0x00 只充当第0个数 实际用不到 1-20 0x14:20
         self.lock_number = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-                            0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x16, 0x17, 0x18, 0x19, 0x20]
+                            0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14]
 
         # 第一块板子
         self.open_one_lock = [0x01, 0xF2, 0x55]
@@ -64,7 +64,7 @@ class SerialLockControl:
         elif lock_num == 15:
             result = '01 F2 55 0F ' + re1, re2
         else:
-            result = '01 F2 55 0' + str(lock_num), re1, re2
+            result = '01 F2 55 ' + str(hex(lock_num))[2:4], re1, re2
         return ' '.join(result)
 
     def open_lock(self, first_lock, final_lock):
@@ -87,9 +87,9 @@ if __name__ == '__main__':
             1. 随机测试
             2. 全开全闭
             """)
-        propose = eval(input(">"))
+        propose = 1
         if propose == 1:
-            lock.open_lock(1, 12)
+            lock.open_lock(1, 20)
         elif propose == 2:
             pass
     else:
