@@ -63,7 +63,7 @@ class SerialLockControl:
                                                                                               row=8, column=3)
         Button(self.window, text="关闭LED", command=lambda: self.open_light("01", "close")).grid(ipadx=10,
                                                                                                row=8, column=4)
-        Button(self.window, text="一键开启", command=self.open_all_lock).grid(ipadx=10, row=9, column=1)
+        Button(self.window, text="一键开启", command=self.thread_open_all_lock).grid(ipadx=10, row=9, column=1)
         self.window.mainloop()
 
     def _sum(self, num):
@@ -234,6 +234,10 @@ class SerialLockControl:
                     d = bytes.fromhex(data)
                     self.ser.write(d)
                     time.sleep(2)
+
+    def thread_open_all_lock(self):
+        t = threading.Thread(target=self.open_all_lock)
+        t.start()
 
 
 if __name__ == '__main__':
