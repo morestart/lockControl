@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter.ttk import *
 import serial
+from tkinter import messagebox
+import time
 import threading
 
 
@@ -14,6 +16,10 @@ class SerialLockControl:
 
         self.open = [0x01, 0xF2, 0x55]
         self.open2 = [0x03, 0xF2, 0x55]
+        self.open_light1 = [0x01, 0xF5, 0x55, 0x01]
+        self.open_light2 = [0x03, 0xF5, 0x55, 0x01]
+        self.close_light1 = [0x01, 0xF5, 0x55, 0x00]
+        self.close_light2 = [0x03, 0xF5, 0x55, 0x00]
 
         self.window = Tk()
         self.window.title("锁控测试程序")
@@ -53,7 +59,11 @@ class SerialLockControl:
         Button(self.window, text="28号", command=lambda: self.open_lock(28)).grid(ipadx=10, row=7, column=4)
         Button(self.window, text="29号", command=lambda: self.open_lock(29)).grid(ipadx=10, row=8, column=1)
         Button(self.window, text="30号", command=lambda: self.open_lock(30)).grid(ipadx=10, row=8, column=2)
-
+        Button(self.window, text="开启LED", command=lambda: self.open_light("01", "open")).grid(ipadx=10,
+                                                                                              row=8, column=3)
+        Button(self.window, text="关闭LED", command=lambda: self.open_light("01", "close")).grid(ipadx=10,
+                                                                                               row=8, column=4)
+        Button(self.window, text="一键开启", command=self.open_all_lock).grid(ipadx=10, row=9, column=1)
         self.window.mainloop()
 
     def _sum(self, num):
@@ -65,18 +75,33 @@ class SerialLockControl:
                 hex_sum += self.open[i]
             # print("十进制求和: ", hex_sum)
             del (self.open[3])
-        else:
+        elif 21 <= num <= 30:
             # 第二个板子从1号开始算起
             num = num - 20
             self.open2.append(self.lock_number[num - 1])
-            print(self.open2)
             for i in range(len(self.open2)):
                 hex_sum += self.open2[i]
-            print("十进制求和: ", hex_sum)
+            # print("十进制求和: ", hex_sum)
             del (self.open2[3])
+            # print(hex(hex_sum))
+        # 200 代表第1个板子灯带开 201 代表第1个板子灯带关
+        # 202 代表第2个板子灯带开 203 代表第2个板子灯带关
+        elif num == 200:
+            for i in range(len(self.open_light1)):
+                hex_sum += self.open_light1[i]
+        elif num == 201:
+            for i in range(len(self.close_light1)):
+                hex_sum += self.close_light1[i]
+        elif num == 202:
+            for i in range(len(self.open_light2)):
+                hex_sum += self.open_light2[i]
+        elif num == 203:
+            for i in range(len(self.close_light2)):
+                hex_sum += self.close_light2[i]
         return hex(hex_sum)
 
-    def disintegrate_data(self, result):
+    @staticmethod
+    def disintegrate_data(result):
         res1 = result[2]
         if res1.__len__() == 1:
             res1 = '0' + res1
@@ -105,9 +130,9 @@ class SerialLockControl:
 
     def merge_data_board2(self, lock_num):
         re1, re2 = self.disintegrate_data(self._sum(lock_num))
-        print(re1, re2)
+        # print(re1, re2)
         lock_num = lock_num - 20
-        print(lock_num)
+        # print(lock_num)
         if lock_num < 10:
             result = self.board2 + ' F2 55 0' + str(lock_num), re1, re2
         elif lock_num == 10:
@@ -126,35 +151,90 @@ class SerialLockControl:
             result = self.board2 + ' F2 55 ' + str(hex(lock_num))[2:4], re1, re2
         return ' '.join(result)
 
+    def merger_data_light(self, board, command):
+        # 01F55501
+        # 200 代表第1个板子灯带开 201 代表第1个板子灯带关
+        # 202 代表第2个板子灯带开 203 代表第2个板子灯带关
+        if board == "01" and command == "open":
+            re1, re2 = self.disintegrate_data(self._sum(200))
+            result = self.board + " F5 55 01", re1, re2
+        # elif board == "02" and command == "open":
+        #     re1, re2 = self.disintegrate_data(self._sum(202))
+        #     result = self.board2 + " F5 55 01", re1, re2
+        elif board == "01" and command == "close":
+            re1, re2 = self.disintegrate_data(self._sum(201))
+            result = self.board + " F5 55 00", re1, re2
+        # elif board == "02" and command == "close":
+        #     re1, re2 = self.disintegrate_data(self._sum(203))
+        #     result = self.board2 + " F5 55 00", re1, re2
+
+        return ' '.join(result)
+
     def open_lock(self, number):
 
         if number < 21:
             data = self.merge_data_board1(number)
             print(data)
             if self.ser.is_open:
-                if self.ser.is_open:
-                    d = bytes.fromhex(data)
-                    self.ser.write(d)
-                self.ser.close()
+                d = bytes.fromhex(data)
+                self.ser.write(d)
             else:
                 self.ser.open()
                 d = bytes.fromhex(data)
                 self.ser.write(d)
                 self.ser.close()
         elif number >= 21:
-            print(number)
             data = self.merge_data_board2(number)
             print(data)
             if self.ser.is_open:
-                if self.ser.is_open:
-                    d = bytes.fromhex(data)
-                    self.ser.write(d)
-                self.ser.close()
+                d = bytes.fromhex(data)
+                self.ser.write(d)
             else:
                 self.ser.open()
                 d = bytes.fromhex(data)
                 self.ser.write(d)
-                self.ser.close()
+
+    def open_light(self, board, command):
+        data = self.merger_data_light(board, command)
+        print(data)
+        if self.ser.is_open:
+            d = bytes.fromhex(data)
+            self.ser.write(d)
+        else:
+            try:
+                self.ser.open()
+                d = bytes.fromhex(data)
+                self.ser.write(d)
+            except Exception as e:
+                messagebox.showerror(e)
+
+    def open_all_lock(self):
+        for number in range(1, 31):
+            if number < 21:
+                data = self.merge_data_board1(number)
+                print(data)
+                if self.ser.is_open:
+                    d = bytes.fromhex(data)
+                    self.ser.write(d)
+                    time.sleep(2)
+                else:
+                    self.ser.open()
+                    d = bytes.fromhex(data)
+                    self.ser.write(d)
+                    time.sleep(2)
+            elif number >= 21:
+                data = self.merge_data_board2(number)
+                print(data)
+                if self.ser.is_open:
+                    d = bytes.fromhex(data)
+                    self.ser.write(d)
+                    time.sleep(2)
+                else:
+                    self.ser.open()
+                    d = bytes.fromhex(data)
+                    self.ser.write(d)
+                    time.sleep(2)
 
 
-SerialLockControl("/dev/cu.usbserial-FTAJMSDO", '01', '03')
+if __name__ == '__main__':
+    SerialLockControl("/dev/cu.usbserial-FTAJMSDO", '01', '03')
