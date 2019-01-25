@@ -8,10 +8,12 @@ from tkinter import messagebox
 
 class SerialLockControl:
     def __init__(self, board1, board2, serial_name, port=9600):
+
         self.board1 = board1
         self.board2 = board2
         self.B1 = ''
         self.B2 = ''
+        self.lock_sta = []
         self.BOARD1 = [int(board1), 242, 85]
         self.BOARD2 = [int(board2), 242, 85]
         self.BOARD1LIGHT = [int(board1), 245, 85]
@@ -21,6 +23,9 @@ class SerialLockControl:
             self.ser = serial.Serial(serial_name, port)
         except Exception as e:
             messagebox.showerror("ERROR", e)
+        t = threading.Thread(target=self.get_lock_status)
+        t.setDaemon(True)
+        t.start()
         self.window = Tk()
         self.ui()
 
@@ -33,37 +38,72 @@ class SerialLockControl:
         y = int((hs / 2) - (300 / 2))
         self.window.geometry("{}x{}+{}+{}".format(500, 300, x, y))
         self.window.resizable(0, 0)
-        # self.f = Frame(self.window, width=300, height=40, bg="red").grid(row=0)
-        Button(self.window, text="1号", command=lambda: self.open_lock(1)).grid(ipadx=10, row=1, column=1)
-        Button(self.window, text="2号", command=lambda: self.open_lock(2)).grid(ipadx=10, row=1, column=2)
-        Button(self.window, text="3号", command=lambda: self.open_lock(3)).grid(ipadx=10, row=1, column=3)
-        Button(self.window, text="4号", command=lambda: self.open_lock(4)).grid(ipadx=10, row=1, column=4)
-        Button(self.window, text="5号", command=lambda: self.open_lock(5)).grid(ipadx=10, row=2, column=1)
-        Button(self.window, text="6号", command=lambda: self.open_lock(6)).grid(ipadx=10, row=2, column=2)
-        Button(self.window, text="7号", command=lambda: self.open_lock(7)).grid(ipadx=10, row=2, column=3)
-        Button(self.window, text="8号", command=lambda: self.open_lock(8)).grid(ipadx=10, row=2, column=4)
-        Button(self.window, text="9号", command=lambda: self.open_lock(9)).grid(ipadx=10, row=3, column=1)
-        Button(self.window, text="10号", command=lambda: self.open_lock(10)).grid(ipadx=10, row=3, column=2)
-        Button(self.window, text="11号", command=lambda: self.open_lock(11)).grid(ipadx=10, row=3, column=3)
-        Button(self.window, text="12号", command=lambda: self.open_lock(12)).grid(ipadx=10, row=3, column=4)
-        Button(self.window, text="13号", command=lambda: self.open_lock(13)).grid(ipadx=10, row=4, column=1)
-        Button(self.window, text="14号", command=lambda: self.open_lock(14)).grid(ipadx=10, row=4, column=2)
-        Button(self.window, text="15号", command=lambda: self.open_lock(15)).grid(ipadx=10, row=4, column=3)
-        Button(self.window, text="16号", command=lambda: self.open_lock(16)).grid(ipadx=10, row=4, column=4)
-        Button(self.window, text="17号", command=lambda: self.open_lock(17)).grid(ipadx=10, row=5, column=1)
-        Button(self.window, text="18号", command=lambda: self.open_lock(18)).grid(ipadx=10, row=5, column=2)
-        Button(self.window, text="19号", command=lambda: self.open_lock(19)).grid(ipadx=10, row=5, column=3)
-        Button(self.window, text="20号", command=lambda: self.open_lock(20)).grid(ipadx=10, row=5, column=4)
-        Button(self.window, text="21号", command=lambda: self.open_lock(21)).grid(ipadx=10, row=6, column=1)
-        Button(self.window, text="22号", command=lambda: self.open_lock(22)).grid(ipadx=10, row=6, column=2)
-        Button(self.window, text="23号", command=lambda: self.open_lock(23)).grid(ipadx=10, row=6, column=3)
-        Button(self.window, text="24号", command=lambda: self.open_lock(24)).grid(ipadx=10, row=6, column=4)
-        Button(self.window, text="25号", command=lambda: self.open_lock(25)).grid(ipadx=10, row=7, column=1)
-        Button(self.window, text="26号", command=lambda: self.open_lock(26)).grid(ipadx=10, row=7, column=2)
-        Button(self.window, text="27号", command=lambda: self.open_lock(27)).grid(ipadx=10, row=7, column=3)
-        Button(self.window, text="28号", command=lambda: self.open_lock(28)).grid(ipadx=10, row=7, column=4)
-        Button(self.window, text="29号", command=lambda: self.open_lock(29)).grid(ipadx=10, row=8, column=1)
-        Button(self.window, text="30号", command=lambda: self.open_lock(30)).grid(ipadx=10, row=8, column=2)
+        self.v = StringVar()
+        self.v.set("关闭")
+
+        Button(self.window, text="1号锁", command=lambda: self.open_lock(1)).grid(ipadx=10, row=1, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=1, column=2)
+        Button(self.window, text="2号锁", command=lambda: self.open_lock(2)).grid(ipadx=10, row=1, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=1, column=4)
+        Button(self.window, text="3号锁", command=lambda: self.open_lock(3)).grid(ipadx=10, row=1, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=1, column=6)
+        Button(self.window, text="4号锁", command=lambda: self.open_lock(4)).grid(ipadx=10, row=2, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=2, column=2)
+        Button(self.window, text="5号锁", command=lambda: self.open_lock(5)).grid(ipadx=10, row=2, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=2, column=4)
+        Button(self.window, text="6号锁", command=lambda: self.open_lock(6)).grid(ipadx=10, row=2, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=2, column=6)
+        Button(self.window, text="7号锁", command=lambda: self.open_lock(7)).grid(ipadx=10, row=3, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=3, column=2)
+        Button(self.window, text="8号锁", command=lambda: self.open_lock(8)).grid(ipadx=10, row=3, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=3, column=4)
+        Button(self.window, text="9号锁", command=lambda: self.open_lock(9)).grid(ipadx=10, row=3, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=3, column=6)
+        Button(self.window, text="10号锁", command=lambda: self.open_lock(10)).grid(ipadx=10, row=4, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=4, column=2)
+        Button(self.window, text="11号锁", command=lambda: self.open_lock(11)).grid(ipadx=10, row=4, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=4, column=4)
+        Button(self.window, text="12号锁", command=lambda: self.open_lock(12)).grid(ipadx=10, row=4, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=4, column=6)
+        Button(self.window, text="13号锁", command=lambda: self.open_lock(13)).grid(ipadx=10, row=5, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=5, column=2)
+        Button(self.window, text="14号锁", command=lambda: self.open_lock(14)).grid(ipadx=10, row=5, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=5, column=4)
+        Button(self.window, text="15号锁", command=lambda: self.open_lock(15)).grid(ipadx=10, row=5, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=5, column=6)
+        Button(self.window, text="16号锁", command=lambda: self.open_lock(16)).grid(ipadx=10, row=6, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=6, column=2)
+        Button(self.window, text="17号锁", command=lambda: self.open_lock(17)).grid(ipadx=10, row=6, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=6, column=4)
+        Button(self.window, text="18号锁", command=lambda: self.open_lock(18)).grid(ipadx=10, row=6, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=6, column=6)
+        Button(self.window, text="19号锁", command=lambda: self.open_lock(19)).grid(ipadx=10, row=7, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=7, column=2)
+        Button(self.window, text="20号锁", command=lambda: self.open_lock(20)).grid(ipadx=10, row=7, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=7, column=4)
+        Button(self.window, text="21号锁", command=lambda: self.open_lock(21)).grid(ipadx=10, row=7, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=7, column=6)
+        Button(self.window, text="22号锁", command=lambda: self.open_lock(22)).grid(ipadx=10, row=8, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=8, column=2)
+        Button(self.window, text="23号锁", command=lambda: self.open_lock(23)).grid(ipadx=10, row=8, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=8, column=4)
+        Button(self.window, text="24号锁", command=lambda: self.open_lock(24)).grid(ipadx=10, row=8, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=8, column=6)
+        Button(self.window, text="25号锁", command=lambda: self.open_lock(25)).grid(ipadx=10, row=9, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=9, column=2)
+        Button(self.window, text="26号锁", command=lambda: self.open_lock(26)).grid(ipadx=10, row=9, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=9, column=4)
+        Button(self.window, text="27号锁", command=lambda: self.open_lock(27)).grid(ipadx=10, row=9, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=9, column=6)
+        Button(self.window, text="28号锁", command=lambda: self.open_lock(28)).grid(ipadx=10, row=10, column=1)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=10, column=2)
+        Button(self.window, text="29号锁", command=lambda: self.open_lock(29)).grid(ipadx=10, row=10, column=3)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=10, column=4)
+        Button(self.window, text="30号锁", command=lambda: self.open_lock(30)).grid(ipadx=10, row=10, column=5)
+        Label(self.window, textvariable=self.v).grid(ipadx=10, row=10, column=6)
+
+        Button(self.window, text="一键全开")
+
         self.window.mainloop()
 
     def _sum(self, num):
@@ -187,6 +227,42 @@ class SerialLockControl:
             self.ser.open()
             d = bytes.fromhex(data)
             self.ser.write(d)
+
+    def get_lock_status(self):
+        data = []
+        while True:
+            self.ser.write(b'\x01')
+            self.ser.write(b'\xF3')
+            self.ser.write(b'\x55')
+            self.ser.write(b'\x02')
+            self.ser.write(b'\x01')
+            self.ser.write(b'\x4B')
+            # print(self.ser.read().hex())
+            if self.ser.read().hex() == '01':
+                if self.ser.read().hex() == 'f3':
+                    if self.ser.read().hex() == '55':
+                        if self.ser.read().hex() == '02':
+                            data.append(bin(int(self.ser.read().hex(), 16))[2:11])
+                            data.append(bin(int(self.ser.read().hex(), 16))[2:11])
+                            data.append(bin(int(self.ser.read().hex(), 16))[2:11])
+                            for i in range(len(data)):
+                                for j in range(len(data[i])):
+                                    self.lock_sta.append(data[i][j])
+                            print(self.lock_sta)
+                            # TODO 状态改变代码
+                            if self.lock_sta[0] == '0':
+                                self.v.set("开锁")
+                            data.clear()
+                            self.lock_sta.clear()
+            time.sleep(0.1)
+
+
+
+
+    def thread_lock_status(self):
+        t = threading.Thread(target=self.get_lock_status)
+        t.setDaemon(True)
+        t.start()
 
 
 if __name__ == '__main__':
