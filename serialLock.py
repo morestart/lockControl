@@ -186,9 +186,9 @@ class SerialLockControl:
         Label(self.window, textvariable=self.v30).grid(ipadx=10, row=10, column=6)
 
         Button(self.window, text="开灯", command=self.open_light).grid(ipadx=10, row=11, column=1)
-        Button(self.window, text="关灯", command=self.open_light).grid(ipadx=10, row=11, column=2)
+        Button(self.window, text="关灯", command=self.close_light).grid(ipadx=10, row=11, column=2)
 
-        Button(self.window, text="打开串口", command=self.open_serial).grid(ipadx=10, row=12, column=1)
+        self.b = Button(self.window, text="打开串口", command=self.open_serial).grid(ipadx=10, row=12, column=1)
 
         # Button(self.window, text="一键全开")
 
@@ -197,6 +197,7 @@ class SerialLockControl:
     def open_serial(self):
         try:
             self.ser = serial.Serial(self.serial_name, self.port)
+            self.b['state'] = DISABLED
             t1 = threading.Thread(target=self._update)
             t1.setDaemon(True)
             t1.start()
